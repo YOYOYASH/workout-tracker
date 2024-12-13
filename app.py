@@ -1,20 +1,29 @@
-from fastapi import FastAPI, Response, HTTPException, status
-from pydantic import  BaseModel, EmailStr
-from routes import users,exercise
-app =FastAPI()
+from fastapi import Depends, FastAPI, Response, HTTPException, status
+from contextlib import asynccontextmanager
+
+
+from routes import users,exercise,auth
+from db.database import engine
+import models
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    models.Base.metadata.create_all(bind=engine)
+    yield
+    pass
+
+app =FastAPI(lifespan=lifespan)
 
 
 app.include_router(users.users_route)
 app.include_router(exercise.exercise_route)
+app.include_router(auth.auth_route)
 
 
-class User(BaseModel):
-    user_id:int
-    name:str
-    email:EmailStr
-    age:int
-    location:str
-    is_active:bool
+
+
+
 
 @app.get('/welcome')
 def welcome():
