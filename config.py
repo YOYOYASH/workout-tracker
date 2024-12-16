@@ -10,3 +10,4 @@ class Config:
     DB_HOST = os.getenv("DB_HOST", "localhost")  # Default to 'localhost' if not provided
     DB_PORT = int(os.getenv("DB_PORT", 5432))   # Default to 5432 if not provided
     APP_ENV = os.getenv("APP_ENV", "local")
+    SECRET_KEY= os.getenv("SECRET_KEY")

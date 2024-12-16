@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP
+from sqlalchemy import Column, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP, func
 from sqlalchemy.orm import relationship
 from db.database import Base
 
@@ -26,10 +26,11 @@ class UserProfile(Base):
     fitness_level = Column(String)  # Fitness level, e.g., 'beginner'
     available_time = Column(Integer)  # Time available for workouts in minutes
     contact_number = Column(BigInteger,nullable=False,unique=True,index=True)
-    created_at = Column(TIMESTAMP,nullable=False)
+    created_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
 
     user = relationship("User", back_populates="profile")
-
+    
 
 
 
