@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP, func
+from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP, Text, func
 from sqlalchemy.orm import relationship
 from db.database import Base
 
@@ -30,6 +30,25 @@ class UserProfile(Base):
     updated_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
 
     user = relationship("User", back_populates="profile")
+
+class Exercise(Base):
+    __tablename__ = "exercise"
+
+    exercise_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    muscle_group = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    difficulty_level = Column(String, nullable=True)
+    equipment_needed = Column(Boolean, nullable=False, default=False)
+    equipment_details = Column(String, nullable=True)
+    calories_burnt_per_minute = Column(Float, nullable=True)
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+
+    def __repr__(self):
+        return f"<Exercise(name={self.name}, muscle_group={self.muscle_group})>"
+
     
 
 

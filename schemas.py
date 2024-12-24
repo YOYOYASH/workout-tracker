@@ -46,3 +46,34 @@ class TokenData(BaseModel):
     token:str
     type:str
 
+
+#------------------------------Exercise Schema--------------------------------
+
+class ExerciseBase(BaseModel):
+    name:str
+    description:Optional[str]=None
+    muscle_group:Optional[str]=None
+    category:Optional[str]=None
+    difficulty_level:Optional[str]=None
+    equipment_needed:Optional[bool]=False
+    equipment_details:Optional[str]=None
+    calories_burnt_per_minute:Optional[float]=None
+
+class CreateExercise(ExerciseBase):
+    pass
+
+class DisplayExercise(BaseModel):
+    exercise_id:int
+    name:str
+    description:Optional[str]=None
+    muscle_group:Optional[str]=None
+    category:Optional[str]=None
+    difficulty_level:Optional[str]=None
+    equipment_needed:Optional[bool]=False
+    equipment_details:Optional[str]=None
+    calories_burnt_per_minute:Optional[float]=None
+    created_at:datetime
+    updated_at:datetime
+
+    class Config:
+        from_attributes = True

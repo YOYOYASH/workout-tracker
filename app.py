@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 
 from routes import users,exercise,auth
+from utils.logger import setup_logger
 from db.database import engine
 import models
 
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
 
 app =FastAPI(lifespan=lifespan)
 
+logger = setup_logger(__name__)
 
 app.include_router(users.users_route)
 app.include_router(exercise.exercise_route)

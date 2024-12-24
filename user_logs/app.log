@@ -1,0 +1,5 @@
+2024-12-18 20:03 - WARNING - No user with id 1 found in database
+2024-12-18 23:09 - WARNING - No user with id 1 found in database
+2024-12-24 21:37 - INFO - Users fetched successfully
+2024-12-24 21:39 - ERROR - type object 'Exercise' has no attribute 'id'
+2024-12-24 21:39 - INFO - Exercise fetched successfully
