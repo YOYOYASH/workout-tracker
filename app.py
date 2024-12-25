@@ -8,13 +8,13 @@ from db.database import engine
 import models
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    models.Base.metadata.create_all(bind=engine)
-    yield
-    pass
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     models.Base.metadata.create_all(bind=engine)
+#     yield
+#     pass
 
-app =FastAPI(lifespan=lifespan)
+app =FastAPI()
 
 logger = setup_logger(__name__)
 

@@ -11,6 +11,9 @@ class User(Base):
     password = Column(String,nullable=False)
 
     profile = relationship("UserProfile", back_populates="user", uselist=False)
+    workout_plans = relationship("WorkoutPlan", back_populates="current_user")
+
+    
 
 class UserProfile(Base):
     __tablename__ = 'user_profile'
@@ -29,7 +32,9 @@ class UserProfile(Base):
     created_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
 
+
     user = relationship("User", back_populates="profile")
+    
 
 class Exercise(Base):
     __tablename__ = "exercise"
@@ -46,10 +51,41 @@ class Exercise(Base):
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
 
+    workout_plans = relationship("WorkoutPlanExercise", back_populates="exercise")
+
     def __repr__(self):
         return f"<Exercise(name={self.name}, muscle_group={self.muscle_group})>"
 
+class WorkoutPlan(Base):
+    __tablename__ = "workout_plans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    current_user = relationship("User", back_populates="workout_plans")
+    exercises = relationship("WorkoutPlanExercise", back_populates="workout_plan")
+
     
+
+
+class WorkoutPlanExercise(Base):
+    __tablename__ = "workout_plan_exercises"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercise.exercise_id"), nullable=False)
+    sets = Column(Integer, nullable=False)
+    reps = Column(Integer, nullable=False)
+    order = Column(Integer, nullable=False)
+
+    # Relationships
+    workout_plan = relationship("WorkoutPlan", back_populates="exercises")
+    exercise = relationship("Exercise", back_populates="workout_plans")
 
 
 

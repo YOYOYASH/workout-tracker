@@ -95,7 +95,9 @@ def create_profile(user_id: int, profile_data: schemas.UserProfile, db: Session 
     except Exception as e:
         logger.error(str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    
+
+
+
 
 
 
