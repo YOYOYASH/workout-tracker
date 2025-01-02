@@ -3,3 +3,20 @@
 2024-12-24 21:37 - INFO - Users fetched successfully
 2024-12-24 21:39 - ERROR - type object 'Exercise' has no attribute 'id'
 2024-12-24 21:39 - INFO - Exercise fetched successfully
+2025-01-02 21:44 - WARNING - No workout plan found in database
+2025-01-02 21:44 - ERROR - 404: No workout plan found in database
+2025-01-02 21:45 - INFO - Exercise fetched successfully
+2025-01-02 21:45 - INFO - Exercise fetched successfully
+2025-01-02 21:45 - WARNING - No exercise with id 200 found in database
+2025-01-02 21:45 - ERROR - 404: No exercise with id 200 found in database
+2025-01-02 21:47 - WARNING - No exercise with id 200 found in database
+2025-01-02 21:49 - ERROR - type object 'WorkoutPlan' has no attribute 'workout_id'
+2025-01-02 21:50 - WARNING - No workout plan with id 1 found in database
+2025-01-02 23:14 - ERROR - "CreateWorkoutPlan" object has no field "user_id"
+2025-01-02 23:20 - INFO - Workout plan fetched successfully
+2025-01-02 23:42 - INFO - Exercise fetched successfully
+2025-01-02 23:42 - INFO - Exercise fetched successfully
+2025-01-02 23:44 - ERROR - 'workout_id' is an invalid keyword argument for WorkoutPlanExercise
+2025-01-02 23:44 - INFO - Exercise added to workout plan successfully
+2025-01-02 23:45 - INFO - Exercise added to workout plan successfully
+2025-01-02 23:45 - INFO - Exercise added to workout plan successfully

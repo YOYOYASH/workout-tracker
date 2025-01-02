@@ -77,3 +77,40 @@ class DisplayExercise(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+#------------------------------Workout Plan Schema--------------------------------
+
+
+class CreateWorkoutPlan(BaseModel):
+    name:str
+    description:Optional[str]=None
+
+class DisplayWorkoutPlan(BaseModel):
+    id:int
+    user_id:int
+    name:str
+    description:Optional[str]=None
+    created_at:datetime
+    updated_at:datetime
+
+    class Config:
+        from_attributes = True
+
+class AddExerciseToWorkout(BaseModel):
+    exercise_id:int
+    sets:int
+    reps:int
+    order:int
+
+class DisplayWorkoutPlanExercise(BaseModel):
+    id:int
+    workout_plan_id:int
+    exercise_id:int
+    sets:int
+    reps:int
+    order:int
+
+    class Config:
+        from_attributes = True
+    

@@ -2,5 +2,5 @@ venv
 .env
 __pycache__/
 *.pyc
-user_logs/ 
 *.ipynb
+user_logs/*.log
