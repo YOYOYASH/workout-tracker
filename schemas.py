@@ -41,6 +41,17 @@ class DisplayUserProfile(UserProfile):
     class Config:
         from_attributes = True
 
+class UpdateUserProfile(BaseModel):
+    first_name:Optional[str]=None
+    last_name:Optional[str]=None
+    date_of_birth:Optional[date]=None
+    height:Optional[int]=None
+    weight:Optional[int]=None
+    fitness_goal:Optional[str]=None
+    fitness_level:Optional[str]=None
+    available_time:Optional[int] = None
+    contact_number:Optional[int]=None
+
 
 class TokenData(BaseModel):
     token:str

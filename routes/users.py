@@ -98,6 +98,28 @@ def create_profile(user_id: int, profile_data: schemas.UserProfile, db: Session 
 
 
 
+@users_route.put('/{user_id}/updateprofile',response_model=schemas.DisplayUserProfile)
+def update_profile(user_id:int,profile_data:schemas.UpdateUserProfile,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
+    try:
+        if user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User does not have permission to update this profile")
+        profile = db.query(models.UserProfile).filter(models.UserProfile.user_id == user_id).first()
+        if profile is None:
+            logger.warning(f"No profile found for user with id {user_id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No profile found for user with id {user_id}")
+        for key,value in profile_data.model_dump().items():
+            setattr(profile,key,value)
+        db.commit()
+        db.refresh(profile)
+        logger.info("User profile updated successfully")
+        return profile
+    except HTTPException as http_exec:
+        raise http_exec
+    except Exception as e:
+        logger.error(str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
 
 
 

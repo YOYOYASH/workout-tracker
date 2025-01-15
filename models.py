@@ -30,7 +30,7 @@ class UserProfile(Base):
     available_time = Column(Integer)  # Time available for workouts in minutes
     contact_number = Column(BigInteger,nullable=False,unique=True,index=True)
     created_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
-    updated_at = Column(TIMESTAMP,nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP,nullable=False,server_default=func.now(), onupdate=func.now())
 
 
     user = relationship("User", back_populates="profile")
@@ -49,7 +49,7 @@ class Exercise(Base):
     equipment_details = Column(String, nullable=True)
     calories_burnt_per_minute = Column(Float, nullable=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
-    updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
 
     workout_plans = relationship("WorkoutPlanExercise", back_populates="exercise")
 
