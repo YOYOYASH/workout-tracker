@@ -125,3 +125,11 @@ class DisplayWorkoutPlanExercise(BaseModel):
     class Config:
         from_attributes = True
     
+
+
+#------------------------------Workout log Schema--------------------------------
+
+class CreateWorkoutLog(BaseModel):
+    workout_plan_id:int
+    duration:datetime
+    notes:Optional[str]=None

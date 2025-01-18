@@ -89,3 +89,19 @@ class WorkoutPlanExercise(Base):
 
 
 
+class WorkoutLog(Base):
+    __tablename__ = "workout_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False)
+    date = Column(TIMESTAMP, server_default=func.now())
+    duration = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="workout_logs")
+    workout_plan = relationship("WorkoutPlan", back_populates="logs")
+
+
+
