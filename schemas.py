@@ -114,6 +114,12 @@ class AddExerciseToWorkout(BaseModel):
     reps:int
     order:int
 
+class UpdateExerciseInWorkout(BaseModel):
+    exercise_id:int
+    sets:Optional[int]=None
+    reps:Optional[int]=None
+    order:Optional[int]=None
+
 class DisplayWorkoutPlanExercise(BaseModel):
     id:int
     workout_plan_id:int
@@ -133,3 +139,19 @@ class CreateWorkoutLog(BaseModel):
     workout_plan_id:int
     duration:datetime
     notes:Optional[str]=None
+
+class DisplayWorkoutLog(CreateWorkoutLog):
+    pass
+
+class AddExerciseToWorkoutLog(BaseModel):
+    exercise_id:int
+    sets_completed:int
+    reps_completed:int
+    weight_used:Optional[float]=None
+
+class DisplayWorkoutLogExercise(AddExerciseToWorkoutLog):
+    id:int
+    workout_log_id:int
+
+    class Config:
+        from_attributes = True

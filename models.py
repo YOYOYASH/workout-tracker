@@ -12,7 +12,7 @@ class User(Base):
 
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     workout_plans = relationship("WorkoutPlan", back_populates="current_user")
-
+    workout_logs = relationship("WorkoutLog", back_populates="user")
     
 
 class UserProfile(Base):
@@ -96,12 +96,22 @@ class WorkoutLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False)
     date = Column(TIMESTAMP, server_default=func.now())
+    status = Column(String, server_default="completed")  # Completed, skipped, partial
     duration = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="workout_logs")
-    workout_plan = relationship("WorkoutPlan", back_populates="logs")
+    workout_plan = relationship("WorkoutPlan")
 
 
+class WorkoutLogExercise(Base):
+    __tablename__ = "workout_log_exercises"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workout_log_id = Column(Integer, ForeignKey("workout_logs.id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercise.exercise_id"), nullable=False)
+    sets_completed = Column(Integer, nullable=True)
+    reps_completed = Column(Integer, nullable=True)
+    weight_used = Column(Float, nullable=True)  # Track weight used
 
