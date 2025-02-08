@@ -17,6 +17,7 @@ def create_workout_log(workout_log_data: schemas.CreateWorkoutLog,db:Session = D
         if workout_plan is None:
             logger.warning(f"No workout plan with id {workout_log_data.workout_plan_id} found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"No workout plan with id {workout_log_data.workout_plan_id} found in database")
+        
         new_workout_log = models.WorkoutLog(user_id=current_user.id,**workout_log_data.model_dump())
         db.add(new_workout_log)
         db.commit()

@@ -137,7 +137,7 @@ class DisplayWorkoutPlanExercise(BaseModel):
 
 class CreateWorkoutLog(BaseModel):
     workout_plan_id:int
-    duration:datetime
+    duration:int
     notes:Optional[str]=None
 
 class DisplayWorkoutLog(CreateWorkoutLog):

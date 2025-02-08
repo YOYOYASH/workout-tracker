@@ -66,6 +66,10 @@ def add_exercise_to_workout(workout_id:int,exercise_data: schemas.AddExerciseToW
         if exercises is None:
             logger.warning(f"No exercise with id {exercise_data.exercise_id} found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"No exercise with id {exercise_data.exercise_id} found in database")
+        exercise_already_exists = db.query(models.WorkoutPlanExercise).filter(models.WorkoutPlanExercise.workout_plan_id == workout_id,models.WorkoutPlanExercise.exercise_id == exercise_data.exercise_id).first()
+        if exercise_already_exists:
+            logger.warning(f"Exercise already exists in workout plan")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail= f"Exercise already exists in workout plan")
         new_exercise = models.WorkoutPlanExercise(workout_plan_id=workout_id,**exercise_data.model_dump())
         db.add(new_exercise)
         db.commit()
