@@ -11,3 +11,4 @@ class Config:
     DB_PORT = int(os.getenv("DB_PORT", 5432))   # Default to 5432 if not provided
     APP_ENV = os.getenv("APP_ENV", "local")
     SECRET_KEY= os.getenv("SECRET_KEY")
+    PROJECT_ID = os.getenv("PROJECT_ID")

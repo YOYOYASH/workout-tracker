@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, Response, HTTPException, status
 from contextlib import asynccontextmanager
 
 
-from routes import users,exercise,auth,workout,workout_logs
+from routes import users,exercise,auth,workout,workout_logs,progress
 from utils.logger import setup_logger
 from db.database import engine
 import models
@@ -23,6 +23,7 @@ app.include_router(exercise.exercise_route)
 app.include_router(auth.auth_route)
 app.include_router(workout.workout_route)
 app.include_router(workout_logs.workout_log_route)
+app.include_router(progress.progress_route)
 
 
 

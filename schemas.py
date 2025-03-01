@@ -96,6 +96,7 @@ class DisplayExercise(BaseModel):
 class CreateWorkoutPlan(BaseModel):
     name:str
     description:Optional[str]=None
+    weeks:Optional[int]=None
 
 class DisplayWorkoutPlan(BaseModel):
     id:int
@@ -108,8 +109,19 @@ class DisplayWorkoutPlan(BaseModel):
     class Config:
         from_attributes = True
 
+class UpdateWorkoutPlan(BaseModel):
+    name:Optional[str]=None
+    description:Optional[str]=None
+
+class CreateWeek(BaseModel):
+    week_number:int
+
+class CreateWorkoutDay(BaseModel):
+    day_of_week:str
+
 class AddExerciseToWorkout(BaseModel):
     exercise_id:int
+    workout_plan_day_id:int
     sets:int
     reps:int
     order:int
@@ -152,6 +164,24 @@ class AddExerciseToWorkoutLog(BaseModel):
 class DisplayWorkoutLogExercise(AddExerciseToWorkoutLog):
     id:int
     workout_log_id:int
+
+    class Config:
+        from_attributes = True
+
+
+#------------------------------User Progress Schema--------------------------------
+
+class CreateProgress(BaseModel):
+    date:datetime
+    weight:float
+    bmi:Optional[float]=None
+    body_fat_percentage:Optional[float]=None
+    muscle_mass:Optional[float]=None
+    notes:Optional[str]=None
+
+class DisplayProgress(CreateProgress):
+    id: int
+    user_id:int
 
     class Config:
         from_attributes = True

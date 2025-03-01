@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP, Text, func
+from sqlalchemy import Boolean, Column, Date, Float, Integer, String, ForeignKey, DATE,BigInteger,TIMESTAMP, Text, func
 from sqlalchemy.orm import relationship
 from db.database import Base
 
@@ -13,6 +13,7 @@ class User(Base):
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     workout_plans = relationship("WorkoutPlan", back_populates="current_user")
     workout_logs = relationship("WorkoutLog", back_populates="user")
+    progress = relationship("Progress", back_populates="user", cascade="all, delete-orphan")
     
 
 class UserProfile(Base):
@@ -63,14 +64,37 @@ class WorkoutPlan(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    weeks = Column(Integer, nullable=False,default=1) 
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     current_user = relationship("User", back_populates="workout_plans")
     exercises = relationship("WorkoutPlanExercise", back_populates="workout_plan")
+    weeks_schedule = relationship("WorkoutPlanWeek", back_populates="workout_plan", cascade="all, delete-orphan")
 
-    
+
+class WorkoutPlanWeek(Base):
+    __tablename__ = "workout_plan_weeks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workout_plan_id = Column(Integer, ForeignKey("workout_plans.id", ondelete="CASCADE"), nullable=False)
+    week_number = Column(Integer, nullable=False)  # Week 1, Week 2, etc.
+
+    # Relationships
+    workout_plan = relationship("WorkoutPlan", back_populates="weeks_schedule")
+    days_schedule = relationship("WorkoutPlanDay", back_populates="week", cascade="all, delete-orphan")
+
+class WorkoutPlanDay(Base):
+    __tablename__ = "workout_plan_days"
+
+    id = Column(Integer, primary_key=True, index=True)
+    workout_plan_week_id = Column(Integer, ForeignKey("workout_plan_weeks.id", ondelete="CASCADE"), nullable=False)
+    day_of_week = Column(String, nullable=False)  # e.g., "Monday", "Wednesday"
+
+    # Relationships
+    week = relationship("WorkoutPlanWeek", back_populates="days_schedule")
+    exercises = relationship("WorkoutPlanExercise", back_populates="day", cascade="all, delete-orphan")
 
 
 class WorkoutPlanExercise(Base):
@@ -79,12 +103,13 @@ class WorkoutPlanExercise(Base):
     id = Column(Integer, primary_key=True, index=True)
     workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False)
     exercise_id = Column(Integer, ForeignKey("exercise.exercise_id"), nullable=False)
+    workout_plan_day_id = Column(Integer, ForeignKey("workout_plan_days.id", ondelete="CASCADE"), nullable=False)
     sets = Column(Integer, nullable=False)
     reps = Column(Integer, nullable=False)
     order = Column(Integer, nullable=False)
 
     # Relationships
-    workout_plan = relationship("WorkoutPlan", back_populates="exercises")
+    day = relationship("WorkoutPlanDay", back_populates="exercises")
     exercise = relationship("Exercise", back_populates="workout_plans")
 
 
@@ -115,3 +140,18 @@ class WorkoutLogExercise(Base):
     reps_completed = Column(Integer, nullable=True)
     weight_used = Column(Float, nullable=True)  # Track weight used
 
+
+class Progress(Base):
+    __tablename__ = "progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    date = Column(Date, nullable=False)  # The date the progress was logged
+    weight = Column(Float, nullable=False)  # Weight in kg
+    bmi = Column(Float, nullable=True)  # Calculated BMI (optional)
+    body_fat_percentage = Column(Float, nullable=True)  # Body fat percentage (optional)
+    muscle_mass = Column(Float, nullable=True)  # Muscle mass (optional)
+    notes = Column(String, nullable=True)  # Any additional notes
+
+    # Relationship with User
+    user = relationship("User", back_populates="progress")
