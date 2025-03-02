@@ -37,7 +37,7 @@ def get_user(user_id:int,db:Session = Depends(get_db),current_user:dict = Depend
         if user is None:
             logger.warning(f"No user with id {user_id} found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User with id {user_id} not found")
-        logger.info("User fetched successfully")
+        logger.info("User fetched successfully")    
         return user
     except HTTPException as http_exec:
         raise http_exec

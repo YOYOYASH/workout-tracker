@@ -24,6 +24,7 @@ class UserProfile(Base):
     first_name = Column(String,nullable=False,index=True)
     last_name = Column(String)
     date_of_birth = Column(DATE,nullable=False)
+    gender = Column(String,nullable=False,default='Not Specified')
     height = Column(Integer,nullable=False)
     weight = Column(Integer,nullable=False)
     fitness_goal = Column(String)  # Fitness goal, e.g., 'weight loss'
@@ -70,7 +71,6 @@ class WorkoutPlan(Base):
 
     # Relationships
     current_user = relationship("User", back_populates="workout_plans")
-    exercises = relationship("WorkoutPlanExercise", back_populates="workout_plan")
     weeks_schedule = relationship("WorkoutPlanWeek", back_populates="workout_plan", cascade="all, delete-orphan")
 
 
@@ -101,7 +101,6 @@ class WorkoutPlanExercise(Base):
     __tablename__ = "workout_plan_exercises"
 
     id = Column(Integer, primary_key=True, index=True)
-    workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False)
     exercise_id = Column(Integer, ForeignKey("exercise.exercise_id"), nullable=False)
     workout_plan_day_id = Column(Integer, ForeignKey("workout_plan_days.id", ondelete="CASCADE"), nullable=False)
     sets = Column(Integer, nullable=False)

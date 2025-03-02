@@ -10,7 +10,7 @@ import schemas
 workout_route = APIRouter(prefix='/workouts')
 logger = setup_logger("workout_route")
 
-@workout_route.get('/',response_model=List[schemas.Displaymodels.WorkoutPlan])
+@workout_route.get('/',response_model=List[schemas.DisplayWorkoutPlan])
 def get_workouts(db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)) -> list:
     try:
         result = db.query(models.models.WorkoutPlan).all()
@@ -25,7 +25,7 @@ def get_workouts(db:Session = Depends(get_db),current_user:dict = Depends(get_cu
         logger.error(str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@workout_route.get("/{plan_id}", response_model=schemas.DisplayWorkoutPlan)
+@workout_route.get("/{plan_id}")
 def get_workout_plan(
     plan_id: int, 
     db: Session = Depends(get_db), 
@@ -80,10 +80,10 @@ def get_exercises_in_day(
     return exercises
 
 
-@workout_route.post('/',status_code=status.HTTP_201_CREATED,response_model=schemas.Displaymodels.WorkoutPlan)
-def create_workout(workout_data: schemas.Createmodels.WorkoutPlan,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
+@workout_route.post('/',status_code=status.HTTP_201_CREATED,response_model=schemas.DisplayWorkoutPlan)
+def create_workout(workout_data: schemas.CreateWorkoutPlan,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
-        new_workout = models.models.WorkoutPlan(user_id=current_user.id,**workout_data.model_dump())
+        new_workout = models.WorkoutPlan(user_id=current_user.id,**workout_data.model_dump())
         db.add(new_workout)
         db.commit()
         db.refresh(new_workout)
@@ -93,7 +93,7 @@ def create_workout(workout_data: schemas.Createmodels.WorkoutPlan,db:Session = D
         logger.error(str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@workout_route.post("/{plan_id}/weeks", response_model=schemas.Displaymodels.WorkoutPlanWeek)
+@workout_route.post("/{plan_id}/weeks", response_model=schemas.DisplayWeek)
 def add_week_to_plan(
     plan_id: int, 
     week_data: schemas.CreateWeek, 
@@ -106,6 +106,9 @@ def add_week_to_plan(
 
     if not workout_plan:
         raise HTTPException(status_code=404, detail="Workout plan not found or unauthorized access.")
+    
+    if week_data.week_number < 1 or week_data.week_number > workout_plan.weeks:
+        raise HTTPException(status_code=400, detail=f"Invalid week number. Must be between 1 and {workout_plan.weeks}.")
 
     # Prevent duplicate weeks
     existing_week = db.query(models.WorkoutPlanWeek).filter(
@@ -130,7 +133,7 @@ def add_week_to_plan(
         raise HTTPException(status_code=500, detail=f"Error adding week: {str(e)}")
 
 
-@workout_route.post("/weeks/{week_id}/days", response_model=schemas.DisplayWorkoutPlanDay)
+@workout_route.post("/weeks/{week_id}/days", response_model=schemas.DisplayWorkoutDay)
 def add_day_to_week(
     week_id: int, 
     day_data: schemas.CreateWorkoutDay, 
@@ -171,7 +174,7 @@ def add_day_to_week(
 @workout_route.post("/days/{day_id}/exercises", response_model=schemas.DisplayWorkoutPlanExercise)
 def add_exercise_to_day(
     day_id: int, 
-    exercise_data: schemas.CreateWorkoutExercise, 
+    exercise_data: schemas.AddExerciseToWorkout, 
     db: Session = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
@@ -263,25 +266,6 @@ def update_exercises_in_day(
     return updated_exercises
 
 
-@workout_route.delete('/{workout_id}/exercises/{exercise_id}',status_code=status.HTTP_204_NO_CONTENT)
-def delete_workout_exercise(workout_id:int,exercise_id:int,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
-    try:
-        workout_exercise = db.query(models.models.WorkoutPlanExercise).join(models.models.WorkoutPlan).filter(
-                                models.models.WorkoutPlanExercise.workout_plan_id == workout_id,
-                                models.models.WorkoutPlanExercise.exercise_id == exercise_id,
-                                models.models.WorkoutPlan.user_id == current_user.id
-                            ).first()
-        if workout_exercise is None:
-            logger.warning(f"No workout plan with id {workout_id} found in database or user does not have access to it")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"No workout plan with id {workout_id} found in database or user does not have access to it")
-        db.delete(workout_exercise)
-        db.commit()
-        logger.info("Exercise deleted successfully")
-    except HTTPException as http_exec:
-        raise http_exec
-    except Exception as e:
-        logger.error(str(e))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 

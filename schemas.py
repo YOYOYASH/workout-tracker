@@ -116,8 +116,14 @@ class UpdateWorkoutPlan(BaseModel):
 class CreateWeek(BaseModel):
     week_number:int
 
+class DisplayWeek(CreateWeek):
+    id:int
+
 class CreateWorkoutDay(BaseModel):
     day_of_week:str
+
+class DisplayWorkoutDay(CreateWorkoutDay):
+    id:int
 
 class AddExerciseToWorkout(BaseModel):
     exercise_id:int
@@ -134,7 +140,7 @@ class UpdateExerciseInWorkout(BaseModel):
 
 class DisplayWorkoutPlanExercise(BaseModel):
     id:int
-    workout_plan_id:int
+    workout_plan_day_id:int
     exercise_id:int
     sets:int
     reps:int
