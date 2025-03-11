@@ -13,7 +13,7 @@ logger = setup_logger("workout_route")
 @workout_route.get('/',response_model=List[schemas.DisplayWorkoutPlan])
 def get_workouts(db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)) -> list:
     try:
-        result = db.query(models.models.WorkoutPlan).all()
+        result = db.query(models.WorkoutPlan).all()
         if len(result) == 0:
             logger.warning(f"No workout plan found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No workout plan found in database")

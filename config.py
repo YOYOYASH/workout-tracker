@@ -12,3 +12,5 @@ class Config:
     APP_ENV = os.getenv("APP_ENV", "local")
     SECRET_KEY= os.getenv("SECRET_KEY")
     PROJECT_ID = os.getenv("PROJECT_ID")
+    HOST = os.getenv("HOST")
+    PORT = os.getenv("PORT")
