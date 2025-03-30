@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI, Response, HTTPException, status
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
+import models
 from routes import users,exercise,auth,workout,workout_logs,progress,genai
 from utils.logger import setup_logger
 from db.database import engine
@@ -13,7 +14,6 @@ import uvicorn
 # async def lifespan(app: FastAPI):
 #     models.Base.metadata.create_all(bind=engine)
 #     yield
-#     pass
 
 app =FastAPI()
 
