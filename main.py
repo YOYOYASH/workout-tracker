@@ -1,3 +1,4 @@
+from alembic import command
 from fastapi import Depends, FastAPI, Response, HTTPException, status
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,10 +11,15 @@ from config import Config
 
 import uvicorn
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     models.Base.metadata.create_all(bind=engine)
-#     yield
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run Alembic migrations on startup."""
+    print("Running Alembic migrations...")
+
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+
+    yield  # Continue running FastAPI after migrations
 
 app =FastAPI()
 
