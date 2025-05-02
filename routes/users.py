@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends,HTTPException, Form
 from typing import List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from utils.logger import setup_logger
 
 import models
@@ -30,15 +30,20 @@ def get_users(db:Session = Depends(get_db),current_user:dict = Depends(get_curre
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@users_route.get('/{user_id}',response_model=schemas.DisplayUser)
+@users_route.get('/{user_id}')
 def get_user(user_id:int,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
-        user = db.query(models.User).filter(models.User.id == user_id).first()
+        user = db.query(models.User).options(joinedload(models.User.profile)).filter(models.User.id == user_id).first()
         if user is None:
             logger.warning(f"No user with id {user_id} found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User with id {user_id} not found")
         logger.info("User fetched successfully")    
-        return user
+        user_profile = user.profile
+        if user_profile is None:
+            logger.warning(f"No profile found for user with id {user_id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No profile found for user with id {user_id}")
+        logger.info("User profile fetched successfully")
+        return user_profile
     except HTTPException as http_exec:
         raise http_exec
     except Exception as e:

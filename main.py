@@ -11,15 +11,15 @@ from config import Config
 
 import uvicorn
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Run Alembic migrations on startup."""
-    print("Running Alembic migrations...")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     """Run Alembic migrations on startup."""
+#     print("Running Alembic migrations...")
 
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
+#     alembic_cfg = Config("alembic.ini")
+#     command.upgrade(alembic_cfg, "head")
 
-    yield  # Continue running FastAPI after migrations
+#     yield  # Continue running FastAPI after migrations
 
 app =FastAPI()
 

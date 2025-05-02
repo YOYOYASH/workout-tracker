@@ -32,8 +32,6 @@ class UserProfile(BaseModel):
     fitness_level:Optional[str]='beginner'
     available_time:Optional[int] = None
     contact_number:int
-    created_at:datetime
-    updated_at:datetime
 
 class DisplayUserProfile(UserProfile):
     id:int
@@ -159,7 +157,8 @@ class CreateWorkoutLog(BaseModel):
     notes:Optional[str]=None
 
 class DisplayWorkoutLog(CreateWorkoutLog):
-    pass
+    date:datetime
+    id:int
 
 class AddExerciseToWorkoutLog(BaseModel):
     exercise_id:int
