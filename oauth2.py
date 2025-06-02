@@ -2,7 +2,8 @@ from datetime import timedelta,datetime,timezone
 from typing import Annotated
 import jwt
 from jwt.exceptions import InvalidTokenError
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -48,7 +49,7 @@ def verify_access_token(token:str,credentials_exception):
         
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db:Session = Depends(get_db)):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db:AsyncSession = Depends(get_db)):
     try:
         credentials_exception = HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -56,7 +57,8 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db:Session = 
                 headers={"WWW-Authenticate": "Bearer"},
                 )
         username = verify_access_token(token,credentials_exception)
-        user = db.query(models.User).filter(models.User.username == username).first()
+        # user = db.query(models.User).filter(models.User.username == username).first()
+        user = (await db.scalars(select(models.User).where(models.User.username == username))).first()
         return user
     except HTTPException as http_exec:
         raise http_exec

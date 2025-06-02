@@ -14,3 +14,4 @@ class Config:
     PROJECT_ID = os.getenv("PROJECT_ID")
     HOST = os.getenv("HOST")
     PORT = os.getenv("PORT")
+    DB_CONNECTION_STRING = os.getenv("DATABASE_URL")

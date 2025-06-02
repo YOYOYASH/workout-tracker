@@ -5,17 +5,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from routes import users,exercise,auth,workout,workout_logs,progress,genai
 from utils.logger import setup_logger
-from db.database import engine
+from db.database import sessionmanger
 from config import Config 
 
 import uvicorn
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     models.Base.metadata.create_all(bind=engine)
-#     yield
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    if sessionmanger._engine is not None:
+        await sessionmanger.close() 
 
-app =FastAPI()
+app =FastAPI(lifespan=lifespan)
 
 logger = setup_logger(__name__)
 
@@ -39,9 +40,9 @@ app.add_middleware(
 
 
 
-@app.get('/welcome')
-def welcome():
-    return {"response":"Welcome to a new project"}
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
 
 

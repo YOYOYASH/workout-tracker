@@ -1,7 +1,10 @@
 from typing import List
 from fastapi import APIRouter,HTTPException,status,Depends
 from db.database import get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 import models
 from oauth2 import get_current_user
 from utils.logger import setup_logger
@@ -11,9 +14,10 @@ workout_route = APIRouter(prefix='/workouts')
 logger = setup_logger("workout_route")
 
 @workout_route.get('/',response_model=List[schemas.DisplayWorkoutPlan])
-def get_workouts(db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)) -> list:
+async def get_workouts(db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
-        result = db.query(models.WorkoutPlan).all()
+        # result = db.query(models.WorkoutPlan).all()
+        result  = (await db.scalars(select(models.WorkoutPlan))).all()
         if len(result) == 0:
             logger.warning(f"No workout plan found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No workout plan found in database")
@@ -26,67 +30,67 @@ def get_workouts(db:Session = Depends(get_db),current_user:dict = Depends(get_cu
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @workout_route.get("/{plan_id}")
-def get_workout_plan(
+async def get_workout_plan(
     plan_id: int, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    plan = db.query(models.WorkoutPlan).filter(
-        models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
-    ).first()
-
+    # plan = db.query(models.WorkoutPlan).filter(
+    #     models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
+    # ).first()
+    plan = (await db.scalars(select(models.WorkoutPlan).where(models.WorkoutPlan.id == plan_id,models.WorkoutPlan.user_id == current_user.id)
+                            .options(
+                                # Eagerly load 'weeks_schedule' relationship
+                                selectinload(models.WorkoutPlan.weeks_schedule)
+                                # And within each week, eagerly load its 'days_schedule'
+                                .selectinload(models.WorkoutPlanWeek.days_schedule)
+                            )
+                             ))
+            
     if not plan:
         raise HTTPException(status_code=404, detail="Workout plan not found.")
-
-    weeks = db.query(models.WorkoutPlanWeek).filter(models.WorkoutPlanWeek.workout_plan_id == plan_id).all()
     
-    plan_data = {
-        "id": plan.id,
-        "name": plan.name,
-        "description": plan.description,
-        "weeks": plan.weeks,
-        "schedule": []
-    }
+    # Because of `selectinload` and `response_model=WorkoutPlanResponse` with `from_attributes=True`,
+    # FastAPI (with Pydantic) can often automatically convert the `plan` ORM object
+    # (with its eagerly loaded relationships) into the Pydantic response model.
 
-    for week in weeks:
-        days = db.query(models.WorkoutPlanDay).filter(models.WorkoutPlanDay.workout_plan_week_id == week.id).all()
-        week_data = {
-            "week_number": week.week_number,
-            "days": []
-        }
+    # The `plan` object now has:
+    # - plan.id, plan.name, plan.description, plan.weeks (the integer)
+    # - plan.weeks_schedule (a list of WorkoutPlanWeek objects)
+    #   - Each week_obj in plan.weeks_schedule has week_obj.days_schedule (a list of WorkoutPlanDay objects)
 
-        for day in days:
-            week_data["days"].append({"id": day.id, "day_of_week": day.day_of_week})
-
-        plan_data["schedule"].append(week_data)
-
-    return plan_data
+    return plan # FastAPI will use WorkoutPlanResponse to serialize this
 
 @workout_route.get("/days/{day_id}/exercises", response_model=List[schemas.DisplayWorkoutPlanExercise])
-def get_exercises_in_day(
+async def get_exercises_in_day(
     day_id: int, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    day = db.query(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).filter(
-        models.WorkoutPlanDay.id == day_id, 
+    # day = db.query(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).filter(
+    #     models.WorkoutPlanDay.id == day_id, 
+    #     models.WorkoutPlan.user_id == current_user.id
+    # ).first()
+    day = (await db.scalars(select(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).where(
+        models.WorkoutPlanDay.id == day_id,
         models.WorkoutPlan.user_id == current_user.id
-    ).first()
+    ))).first()
 
     if not day:
         raise HTTPException(status_code=404, detail="Day not found or unauthorized access.")
 
-    exercises = db.query(models.WorkoutPlanExercise).filter(models.WorkoutPlanExercise.workout_plan_day_id == day_id).all()
+    # exercises = db.query(models.WorkoutPlanExercise).filter(models.WorkoutPlanExercise.workout_plan_day_id == day_id).all()
+    exercises = (await db.scalars(select(models.WorkoutPlanExercise).where(models.WorkoutPlanExercise.workout_plan_day_id == day_id))).all()
     return exercises
 
 
 @workout_route.post('/',status_code=status.HTTP_201_CREATED,response_model=schemas.DisplayWorkoutPlan)
-def create_workout(workout_data: schemas.CreateWorkoutPlan,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
+async def create_workout(workout_data: schemas.CreateWorkoutPlan,db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
         new_workout = models.WorkoutPlan(user_id=current_user.id,**workout_data.model_dump())
         db.add(new_workout)
-        db.commit()
-        db.refresh(new_workout)
+        await db.commit()
+        await db.refresh(new_workout)
         logger.info("Workout plan created successfully")
         return new_workout
     except Exception as e:
@@ -94,15 +98,16 @@ def create_workout(workout_data: schemas.CreateWorkoutPlan,db:Session = Depends(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @workout_route.post("/{plan_id}/weeks", response_model=schemas.DisplayWeek)
-def add_week_to_plan(
+async def add_week_to_plan(
     plan_id: int, 
     week_data: schemas.CreateWeek, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    workout_plan = db.query(models.WorkoutPlan).filter(
-        models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
-    ).first()
+    # workout_plan = db.query(models.WorkoutPlan).filter(
+    #     models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
+    # ).first()
+    workout_plan = (await db.scalars(select(models.WorkoutPlan).where(models.WorkoutPlan.id == plan_id,models.WorkoutPlan.user_id == current_user.id))).first()
 
     if not workout_plan:
         raise HTTPException(status_code=404, detail="Workout plan not found or unauthorized access.")
@@ -111,10 +116,10 @@ def add_week_to_plan(
         raise HTTPException(status_code=400, detail=f"Invalid week number. Must be between 1 and {workout_plan.weeks}.")
 
     # Prevent duplicate weeks
-    existing_week = db.query(models.WorkoutPlanWeek).filter(
+    existing_week = (await db.scalars(select(models.WorkoutPlanWeek).where(
         models.WorkoutPlanWeek.workout_plan_id == plan_id,
         models.WorkoutPlanWeek.week_number == week_data.week_number
-    ).first()
+    ))).first()
 
     if existing_week:
         raise HTTPException(status_code=400, detail=f"Week {week_data.week_number} already exists in this plan.")
@@ -125,8 +130,8 @@ def add_week_to_plan(
             week_number=week_data.week_number
         )
         db.add(week)
-        db.commit()
-        db.refresh(week)
+        await db.commit()
+        await db.refresh(week)
         return week
 
     except Exception as e:
@@ -134,25 +139,29 @@ def add_week_to_plan(
 
 
 @workout_route.post("/weeks/{week_id}/days", response_model=schemas.DisplayWorkoutDay)
-def add_day_to_week(
+async def add_day_to_week(
     week_id: int, 
     day_data: schemas.CreateWorkoutDay, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    week = db.query(models.WorkoutPlanWeek).join(models.WorkoutPlan).filter(
+    # week = db.query(models.WorkoutPlanWeek).join(models.WorkoutPlan).filter(
+    #     models.WorkoutPlanWeek.id == week_id, 
+    #     models.WorkoutPlan.user_id == current_user.id
+    # ).first()
+    week = (await db.scalars(select(models.WorkoutPlanWeek).join(models.WorkoutPlan).where(
         models.WorkoutPlanWeek.id == week_id, 
         models.WorkoutPlan.user_id == current_user.id
-    ).first()
+    )))
 
     if not week:
         raise HTTPException(status_code=404, detail="Week not found or unauthorized access.")
 
     # Prevent duplicate days
-    existing_day = db.query(models.WorkoutPlanDay).filter(
+    existing_day = (await db.scalars(select(models.WorkoutPlanDay).where(
         models.WorkoutPlanDay.workout_plan_week_id == week_id,
         models.WorkoutPlanDay.day_of_week == day_data.day_of_week
-    ).first()
+    ))).first()
 
     if existing_day:
         raise HTTPException(status_code=400, detail=f"{day_data.day_of_week} already exists in this week.")
@@ -163,8 +172,8 @@ def add_day_to_week(
             day_of_week=day_data.day_of_week
         )
         db.add(day)
-        db.commit()
-        db.refresh(day)
+        await db.commit()
+        await db.refresh(day)
         return day
 
     except Exception as e:
@@ -172,22 +181,22 @@ def add_day_to_week(
 
 
 @workout_route.post("/days/{day_id}/exercises", response_model=schemas.DisplayWorkoutPlanExercise)
-def add_exercise_to_day(
+async def add_exercise_to_day(
     day_id: int, 
     exercise_data: schemas.AddExerciseToWorkout, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: dict = Depends(get_current_user)
 ):
-    day = db.query(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).filter(
+    day = (await db.scalars(select(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).where(
         models.WorkoutPlanDay.id == day_id, 
         models.WorkoutPlan.user_id == current_user.id
-    ).first()
+    ))).first()
 
     if not day:
         raise HTTPException(status_code=404, detail="Day not found or unauthorized access.")
 
     # Check if exercise exists
-    exercise = db.query(models.Exercise).filter(models.Exercise.exercise_id == exercise_data.exercise_id).first()
+    exercise = (await db.scalars(select(models.Exercise).where(models.Exercise.exercise_id == exercise_data.exercise_id))).first()
     if not exercise:
         raise HTTPException(status_code=404, detail="Exercise not found.")
 
@@ -200,8 +209,8 @@ def add_exercise_to_day(
             order=exercise_data.order
         )
         db.add(exercise_entry)
-        db.commit()
-        db.refresh(exercise_entry)
+        await db.commit()
+        await db.refresh(exercise_entry)
         return exercise_entry
 
     except Exception as e:
