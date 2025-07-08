@@ -65,3 +65,19 @@ async def get_workout_logs(db:AsyncSession = Depends(get_db),current_user:dict =
     except Exception as e:
         logger.error(str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@workout_log_route.get('/{workout_log_id}/exercises')
+def get_workoutlog_exercises(workout_log_id:int,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
+    try:
+        result = db.query(models.WorkoutLogExercise).filter(models.WorkoutLogExercise.workout_log_id == workout_log_id).all()
+        if len(result) == 0:
+            logger.warning("No exercises logged for this workout")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No exercises logged for this workout")
+        logger.info("Exercise logs fetched successfully!!!")
+        return result
+    except HTTPException as http_exec:
+        raise http_exec
+    except Exception as e:
+        logger.error(str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -3,15 +3,11 @@ from typing import Any, AsyncIterator
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine)
 
-from sqlalchemy.orm import declarative_base
+from config import Config
 
-from config import Config   
-from urllib.parse import quote_plus
-
-# Ensure that the password is URL encoded
-Config.DB_PASSWORD = quote_plus(Config.DB_PASSWORD)
-
-SQLALCHEMY_DATABASE_URL = f"postgresql+asyncpg://{Config.DB_USER}:{Config.DB_PASSWORD}@{Config.DB_HOST}/{Config.DB_NAME}"
+# SQLALCHEMY_DATABASE_URL = f"postgresql://{Config.DB_USER}:{Config.DB_PASSWORD}@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
+SQLALCHEMY_DATABASE_URL = f"postgresql://{Config.DB_USER}:{Config.DB_PASSWORD}@{Config.DB_HOST}/{Config.DB_NAME}"
+print(SQLALCHEMY_DATABASE_URL)
 
 
 
