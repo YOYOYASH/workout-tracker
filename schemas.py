@@ -1,6 +1,6 @@
-from pydantic import  BaseModel, EmailStr
+from pydantic import  BaseModel, EmailStr, UUID4
 from datetime import date,datetime
-from typing import Optional
+from typing import List, Optional
 
 class UserBase(BaseModel):
     username:str
@@ -32,10 +32,11 @@ class UserProfile(BaseModel):
     fitness_level:Optional[str]='beginner'
     available_time:Optional[int] = None
     contact_number:int
+    country_code:str
 
 class DisplayUserProfile(UserProfile):
     id:int
-    user_id:int
+    user_id:UUID4
     class Config:
         from_attributes = True
 
@@ -98,7 +99,7 @@ class CreateWorkoutPlan(BaseModel):
 
 class DisplayWorkoutPlan(BaseModel):
     id:int
-    user_id:int
+    user_id:UUID4
     name:str
     description:Optional[str]=None
     created_at:datetime
@@ -146,6 +147,39 @@ class DisplayWorkoutPlanExercise(BaseModel):
 
     class Config:
         from_attributes = True
+
+class DisplayWorkoutPlanDay(BaseModel):
+    """Schema for workout plan day response"""
+    id: int
+    workout_plan_week_id: int
+    day_of_week: str
+    
+    class Config:
+        from_attributes = True
+
+class DisplayWorkoutPlanWeek(BaseModel):
+    """Schema for workout plan week response"""
+    id: int
+    workout_plan_id: int
+    week_number: int
+    days_schedule: List[DisplayWorkoutPlanDay] = []
+    
+    class Config:
+        from_attributes = True
+    
+class DisplayWorkoutPlanResponse(BaseModel):
+    """Schema for workout plan response"""
+    id: int
+    user_id: UUID4
+    name: str
+    description: Optional[str] = None
+    weeks: int
+    created_at: datetime
+    updated_at: datetime
+    weeks_schedule: List[DisplayWorkoutPlanWeek] = []
+    
+    class Config:
+        from_attributes = True
     
 
 
@@ -159,6 +193,11 @@ class CreateWorkoutLog(BaseModel):
 class DisplayWorkoutLog(CreateWorkoutLog):
     date:datetime
     id:int
+    user_id:UUID4
+    
+    class Config:
+        from_attributes = True
+    
 
 class AddExerciseToWorkoutLog(BaseModel):
     exercise_id:int
@@ -186,7 +225,15 @@ class CreateProgress(BaseModel):
 
 class DisplayProgress(CreateProgress):
     id: int
-    user_id:int
+    user_id:UUID4
 
     class Config:
         from_attributes = True
+
+class UpdateProgress(BaseModel):
+    date:datetime
+    weight:Optional[float]=None
+    bmi:Optional[float]=None
+    body_fat_percentage:Optional[float]=None
+    muscle_mass:Optional[float]=None
+    notes:Optional[str]=None

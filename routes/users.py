@@ -1,10 +1,15 @@
+import json
 from fastapi import APIRouter, status, Depends,HTTPException, Form
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
+from uuid import UUID
+
+from utils.cache import cache
 from utils.logger import setup_logger
+
 
 import models
 import schemas
@@ -33,18 +38,30 @@ async def get_users(db:AsyncSession = Depends(get_db),current_user:dict = Depend
 
 
 @users_route.get('/{user_id}')
-def get_user(user_id:int,db:Session = Depends(get_db),current_user:dict = Depends(get_current_user)):
+async def get_user(user_id:str,db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
-        user = db.query(models.User).options(joinedload(models.User.profile)).filter(models.User.id == user_id).first()
-        if user is None:
-            logger.warning(f"No user with id {user_id} found in database")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"User with id {user_id} not found")
-        logger.info("User fetched successfully")    
-        user_profile = user.profile
+        # user = db.query(models.User).options(joinedload(models.User.profile)).filter(models.User.id == user_id).first()
+        if user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User does not have permission to update this profile")
+        cache_key = f"user_{user_id}"
+        if cache.exists(cache_key):
+            logger.info("Fetching user from cache")
+            user = cache.get(cache_key)
+            return json.loads(user)
+        user_profile = (await db.scalars(select(models.UserProfile).where(models.UserProfile.user_id == user_id)
+                              )).first() 
         if user_profile is None:
             logger.warning(f"No profile found for user with id {user_id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No profile found for user with id {user_id}")
         logger.info("User profile fetched successfully")
+
+        pydantic_data = schemas.DisplayUserProfile.model_validate(user_profile)
+
+        cache.set(
+            cache_key,
+            json.dumps(pydantic_data.model_dump(mode='json'))
+        )
+
         return user_profile
     except HTTPException as http_exec:
         raise http_exec
@@ -80,8 +97,9 @@ async def create_user(user_data: schemas.CreateUser,db:AsyncSession = Depends(ge
 
 
 @users_route.post('/{user_id}/createprofile',status_code=status.HTTP_201_CREATED,response_model=schemas.DisplayUserProfile)
-async def create_profile(user_id: int, profile_data: schemas.UserProfile, db: AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user) ):
+async def create_profile(user_id: str, profile_data: schemas.UserProfile, db: AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user) ):
     try:
+        print(f"Current user ID: {current_user.id}")
         if user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User does not have permission to update this profile")
         # Check for existing profile
@@ -107,7 +125,7 @@ async def create_profile(user_id: int, profile_data: schemas.UserProfile, db: As
 
 
 @users_route.put('/{user_id}/updateprofile',response_model=schemas.DisplayUserProfile)
-async def update_profile(user_id:int,profile_data:schemas.UpdateUserProfile,db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
+async def update_profile(user_id:str,profile_data:schemas.UpdateUserProfile,db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
         if user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User does not have permission to update this profile")
@@ -120,6 +138,9 @@ async def update_profile(user_id:int,profile_data:schemas.UpdateUserProfile,db:A
         await db.commit()
         await db.refresh(profile)
         logger.info("User profile updated successfully")
+        cache_key = f"user_{user_id}"
+        if cache.exists(cache_key):
+            cache.delete(cache_key)
         return profile
     except HTTPException as http_exec:
         raise http_exec

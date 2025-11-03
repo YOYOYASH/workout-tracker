@@ -25,12 +25,13 @@ app =FastAPI()
 
 logger = setup_logger(__name__)
 
-app.include_router(users.users_route)
-app.include_router(exercise.exercise_route)
-app.include_router(auth.auth_route)
-app.include_router(workout.workout_route)
-app.include_router(workout_logs.workout_log_route)
-app.include_router(genai.genai_route)
+app.include_router(users.users_route,prefix='/api')
+app.include_router(exercise.exercise_route,prefix='/api')
+app.include_router(auth.auth_route,prefix='/api')
+app.include_router(workout.workout_route,prefix='/api')
+app.include_router(workout_logs.workout_log_route,prefix='/api')
+app.include_router(genai.genai_route,prefix='/api')
+app.include_router(progress.progress_route,prefix='/api')
 
 
 # Add CORS middleware
@@ -45,7 +46,7 @@ app.add_middleware(
 
 
 
-@app.get("/")
+@app.get("/api/")
 async def root():
     return {"message": "Hello World"}
 

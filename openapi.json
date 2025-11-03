@@ -1,0 +1,1834 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Workout Tracker API",
+    "version": "1.0.0",
+    "description": "API documentation for the Workout Tracker application"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "summary": "Login user and get access token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "User's username"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "User's password"
+                  }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login, returns access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenData"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid credentials"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/exercises": {
+      "get": {
+        "summary": "Get all exercises",
+        "parameters": [
+          {
+            "name": "top",
+            "in": "query",
+            "description": "Limit the number of exercises returned",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of exercises",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayExercise"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No exercises found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/exercises/{exercise_id}": {
+      "get": {
+        "summary": "Get exercise by ID",
+        "parameters": [
+          {
+            "name": "exercise_id",
+            "in": "path",
+            "description": "ID of the exercise to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of exercise",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayExercise"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Exercise not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/genai/generate": {
+      "post": {
+        "summary": "Generate workout plan or answer QnA with assistant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "User's query for workout plan generation or QnA"
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful generation, returns intent and optionally workout plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "intent": {
+                      "type": "string"
+                    },
+                    "workout_plan": {
+                      "$ref": "#/components/schemas/WorkoutPlanResponse"
+                    }
+                  },
+                  "required": ["intent"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request, query not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/progress": {
+      "post": {
+        "summary": "Create a new progress entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProgress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Progress created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayProgress"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get all progress entries for the current user",
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of progress entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayProgress"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No progress found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/progress/{progress_id}": {
+      "get": {
+        "summary": "Get progress entry by ID",
+        "parameters": [
+          {
+            "name": "progress_id",
+            "in": "path",
+            "description": "ID of the progress entry to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of progress entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayProgress"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Progress entry not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "Update a progress entry",
+        "parameters": [
+          {
+            "name": "progress_id",
+            "in": "path",
+            "description": "ID of the progress entry to update",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProgress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Progress updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayProgress"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Progress entry not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete a progress entry",
+        "parameters": [
+          {
+            "name": "progress_id",
+            "in": "path",
+            "description": "ID of the progress entry to delete",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Progress deleted successfully"
+          },
+          "404": {
+            "description": "Progress entry not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Get all users",
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayUser"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No users found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUser"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User already exists"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/users/{user_id}": {
+      "get": {
+        "summary": "Get user profile by user ID",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "ID of the user to retrieve profile for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayUserProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User or profile not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{user_id}/createprofile": {
+      "post": {
+        "summary": "Create a user profile",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "ID of the user to create profile for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User profile created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayUserProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Profile already exists for this user"
+          },
+          "403": {
+            "description": "User does not have permission to create this profile"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{user_id}/updateprofile": {
+      "put": {
+        "summary": "Update a user profile",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "ID of the user to update profile for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayUserProfile"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User does not have permission to update this profile"
+          },
+          "404": {
+            "description": "No profile found for user"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workout_logs": {
+      "post": {
+        "summary": "Create a new workout log",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkoutLog"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workout log created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutLog"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workout plan not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get all workout logs for the current user",
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of workout logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutLog"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No workout log found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workout_logs/{workout_log_id}/exercises": {
+      "post": {
+        "summary": "Add an exercise to a workout log",
+        "parameters": [
+          {
+            "name": "workout_log_id",
+            "in": "path",
+            "description": "ID of the workout log to add exercise to",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AddExerciseToWorkoutLog"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workout log exercise created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutLogExercise"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workout log not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "get": {
+        "summary": "Get exercises logged for a specific workout log",
+        "parameters": [
+          {
+            "name": "workout_log_id",
+            "in": "path",
+            "description": "ID of the workout log to retrieve exercises for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of workout log exercises",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutLogExercise"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No exercises logged for this workout"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts": {
+      "get": {
+        "summary": "Get all workout plans",
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of workout plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutPlan"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No workout plan found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create a new workout plan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkoutPlan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workout plan created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutPlan"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts/{plan_id}": {
+      "get": {
+        "summary": "Get workout plan by ID",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "description": "ID of the workout plan to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of workout plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutPlan"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workout plan not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "Update a workout plan",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "description": "ID of the workout plan to update",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkoutPlan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workout plan updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutPlan"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workout plan not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete a workout plan",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "description": "ID of the workout plan to delete",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Workout plan deleted successfully"
+          },
+          "404": {
+            "description": "Workout plan not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts/{plan_id}/weeks": {
+      "post": {
+        "summary": "Add a week to a workout plan",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "description": "ID of the workout plan to add week to",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWeek"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Week added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWeek"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid week number or week already exists"
+          },
+          "404": {
+            "description": "Workout plan not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts/weeks/{week_id}/days": {
+      "post": {
+        "summary": "Add a day to a workout week",
+        "parameters": [
+          {
+            "name": "week_id",
+            "in": "path",
+            "description": "ID of the workout week to add day to",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkoutDay"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Day added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutDay"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Day already exists in this week"
+          },
+          "404": {
+            "description": "Week not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts/days/{day_id}/exercises": {
+      "get": {
+        "summary": "Get exercises in a workout day",
+        "parameters": [
+          {
+            "name": "day_id",
+            "in": "path",
+            "description": "ID of the workout day to retrieve exercises for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of exercises",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutPlanExercise"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Day not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Add an exercise to a workout day",
+        "parameters": [
+          {
+            "name": "day_id",
+            "in": "path",
+            "description": "ID of the workout day to add exercise to",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExerciseToWorkout"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exercise added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWorkoutPlanExercise"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Day or Exercise not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "Update exercises in a workout day",
+        "parameters": [
+          {
+            "name": "day_id",
+            "in": "path",
+            "description": "ID of the workout day to update exercises for",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/UpdateExerciseInWorkout"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exercises updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DisplayWorkoutPlanExercise"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Day or Exercise not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/workouts/days/{day_id}/exercises/{exercise_id}": {
+      "delete": {
+        "summary": "Delete an exercise from a workout day",
+        "parameters": [
+          {
+            "name": "day_id",
+            "in": "path",
+            "description": "ID of the workout day",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "exercise_id",
+            "in": "path",
+            "description": "ID of the exercise to delete",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Exercise deleted successfully"
+          },
+          "404": {
+            "description": "Exercise not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TokenData": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "DisplayExercise": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "muscle_group": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "difficulty_level": {
+            "type": "string",
+            "nullable": true
+          },
+          "equipment_needed": {
+            "type": "boolean"
+          },
+          "equipment_details": {
+            "type": "string",
+            "nullable": true
+          },
+          "calories_burnt_per_minute": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["exercise_id", "name", "equipment_needed", "created_at", "updated_at"]
+      },
+      "WorkoutPlanResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkoutPlanWeekResponse"
+            }
+          }
+        },
+        "required": ["name", "description", "weeks"]
+      },
+      "WorkoutPlanWeekResponse": {
+        "type": "object",
+        "properties": {
+          "week_number": {
+            "type": "integer"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkoutPlanDayResponse"
+            }
+          }
+        },
+        "required": ["week_number", "days"]
+      },
+      "WorkoutPlanDayResponse": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "exercises": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkoutPlanExerciseResponse"
+            }
+          }
+        },
+        "required": ["day", "exercises"]
+      },
+      "WorkoutPlanExerciseResponse": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "integer"
+          },
+          "exercise_name": {
+            "type": "string"
+          },
+          "sets": {
+            "type": "integer"
+          },
+          "reps": {
+            "type": "integer"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "required": ["exercise_id", "exercise_name", "sets", "reps", "order"]
+      },
+      "CreateProgress": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "weight": {
+            "type": "number",
+            "format": "float"
+          },
+          "bmi": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "body_fat_percentage": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "muscle_mass": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["date", "weight"]
+      },
+      "DisplayProgress": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "weight": {
+            "type": "number",
+            "format": "float"
+          },
+          "bmi": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "body_fat_percentage": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "muscle_mass": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["id", "user_id", "date", "weight"]
+      },
+      "CreateUser": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": ["username", "email", "password"]
+      },
+      "DisplayUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": ["id", "username", "email"]
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "weight": {
+            "type": "integer"
+          },
+          "fitness_goal": {
+            "type": "string",
+            "nullable": true
+          },
+          "fitness_level": {
+            "type": "string",
+            "default": "beginner"
+          },
+          "available_time": {
+            "type": "integer",
+            "nullable": true
+          },
+          "contact_number": {
+            "type": "integer"
+          },
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": ["first_name", "date_of_birth", "height", "weight", "contact_number"]
+      },
+      "DisplayUserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "weight": {
+            "type": "integer"
+          },
+          "fitness_goal": {
+            "type": "string",
+            "nullable": true
+          },
+          "fitness_level": {
+            "type": "string",
+            "default": "beginner"
+          },
+          "available_time": {
+            "type": "integer",
+            "nullable": true
+          },
+          "contact_number": {
+            "type": "integer"
+          }
+        },
+        "required": ["id", "user_id", "first_name", "date_of_birth", "height", "weight", "contact_number"]
+      },
+      "UpdateUserProfile": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "nullable": true
+          },
+          "weight": {
+            "type": "integer",
+            "nullable": true
+          },
+          "fitness_goal": {
+            "type": "string",
+            "nullable": true
+          },
+          "fitness_level": {
+            "type": "string",
+            "nullable": true
+          },
+          "available_time": {
+            "type": "integer",
+            "nullable": true
+          },
+          "contact_number": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "CreateWorkoutLog": {
+        "type": "object",
+        "properties": {
+          "workout_plan_id": {
+            "type": "integer"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["workout_plan_id", "duration"]
+      },
+      "DisplayWorkoutLog": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "workout_plan_id": {
+            "type": "integer"
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["date", "id", "workout_plan_id", "duration"]
+      },
+      "AddExerciseToWorkoutLog": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "integer"
+          },
+          "sets_completed": {
+            "type": "integer"
+          },
+          "reps_completed": {
+            "type": "integer"
+          },
+          "weight_used": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          }
+        },
+        "required": ["exercise_id", "sets_completed", "reps_completed"]
+      },
+      "DisplayWorkoutLogExercise": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "workout_log_id": {
+            "type": "integer"
+          },
+          "exercise_id": {
+            "type": "integer"
+          },
+          "sets_completed": {
+            "type": "integer"
+          },
+          "reps_completed": {
+            "type": "integer"
+          },
+          "weight_used": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          }
+        },
+        "required": ["id", "workout_log_id", "exercise_id", "sets_completed", "reps_completed"]
+      },
+      "CreateWorkoutPlan": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "weeks": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": ["name"]
+      },
+      "DisplayWorkoutPlan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "user_id", "name", "created_at", "updated_at"]
+      },
+      "UpdateWorkoutPlan": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateWeek": {
+        "type": "object",
+        "properties": {
+          "week_number": {
+            "type": "integer"
+          }
+        },
+        "required": ["week_number"]
+      },
+      "DisplayWeek": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "week_number": {
+            "type": "integer"
+          }
+        },
+        "required": ["id", "week_number"]
+      },
+      "CreateWorkoutDay": {
+        "type": "object",
+        "properties": {
+          "day_of_week": {
+            "type": "string"
+          }
+        },
+        "required": ["day_of_week"]
+      },
+      "DisplayWorkoutDay": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "day_of_week": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "day_of_week"]
+      },
+      "AddExerciseToWorkout": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "integer"
+          },
+          "workout_plan_day_id": {
+            "type": "integer"
+          },
+          "sets": {
+            "type": "integer"
+          },
+          "reps": {
+            "type": "integer"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "required": ["exercise_id", "workout_plan_day_id", "sets", "reps", "order"]
+      },
+      "UpdateExerciseInWorkout": {
+        "type": "object",
+        "properties": {
+          "exercise_id": {
+            "type": "integer"
+          },
+          "sets": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reps": {
+            "type": "integer",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": ["exercise_id"]
+      },
+      "DisplayWorkoutPlanExercise": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "workout_plan_day_id": {
+            "type": "integer"
+          },
+          "exercise_id": {
+            "type": "integer"
+          },
+          "sets": {
+            "type": "integer"
+          },
+          "reps": {
+            "type": "integer"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "required": ["id", "workout_plan_day_id", "exercise_id", "sets", "reps", "order"]
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
+}

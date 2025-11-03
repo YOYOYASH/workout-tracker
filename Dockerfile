@@ -1,14 +1,23 @@
-FROM python:3.11-slim
+# Use an official lightweight Python image
+FROM python:3.13-slim
 
-# Set environment variables
-WORKDIR  /app
+# Set the working directory in the container
+WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv
+RUN pip install uv
 
+# Copy the dependency files
+COPY pyproject.toml uv.lock* ./
 
-COPY . . 
+# Install dependencies using uv
+RUN uv pip install --no-cache --system .
 
-EXPOSE 8080
+# Apply patch to supabase-auth to fix with_config issue
+RUN sed -i 's/@with_config(extra="allow")//g' /usr/local/lib/python3.13/site-packages/supabase_auth/types.py
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port" ,"8080"]
+# Copy the rest of the application code
+COPY . .
+
+# Command to run the application with gunicorn
+CMD ["python","main.py"]

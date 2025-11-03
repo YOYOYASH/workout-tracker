@@ -1,7 +1,9 @@
 from typing import List
 from fastapi import APIRouter,HTTPException,status,Depends, Request
+from sqlalchemy import select
 from db.database import get_db
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import models
 from oauth2 import get_current_user
 from utils.logger import setup_logger
@@ -23,7 +25,7 @@ model = GenerativeModel('gemini-2.0-flash-001')
 
 
 @genai_route.post('/generate')
-async def generate(request:Request,db:Session= Depends(get_db),current_user:dict = Depends(get_current_user)):
+async def generate(request:Request,db:AsyncSession= Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
         user_data =await request.json()
         user_query = user_data['query']
@@ -33,13 +35,19 @@ async def generate(request:Request,db:Session= Depends(get_db),current_user:dict
         intent = get_intent(user_query)
         print("Intent: ",intent)
 
+        user_profile = (await db.scalars(select(models.UserProfile).where(models.UserProfile.user_id == current_user.id)
+                              )).first() 
+        if user_profile is None:
+            logger.warning(f"No profile found for user with id {current_user.id}")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No profile found for user with id {current_user.id}")
+
         if 'workout plan generation' in intent.lower():
             print("Generating workout plan....")
-            workout_plan = generate_workout_plan(db,current_user)
+            workout_plan = generate_workout_plan(db,user_profile)
             workout_plan_data = json.loads(workout_plan)
             print("Plan: ",workout_plan_data)
             print("Saving workout plan to database....")
-            save_workout_plan_db(db,current_user,workout_plan_data)
+            await save_workout_plan_db(db,current_user,workout_plan_data)
             return {"intent":intent,"workout_plan":workout_plan_data}
         else:
             return {"intent":intent}
@@ -70,9 +78,8 @@ def get_intent(query:str):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=str(e))
     
 
-def generate_workout_plan(db:Session,current_user:dict):
+def generate_workout_plan(db:AsyncSession,profile:models.UserProfile):
     try:
-        profile = current_user.profile
         user_preferences = {
         "age": datetime.now().year - profile.date_of_birth.year,
         "gender": profile.gender,
@@ -167,7 +174,8 @@ def generate_workout_plan(db:Session,current_user:dict):
             generation_config=GenerationConfig(
                 temperature = 0.4,
                 max_output_tokens = 8192,
-                response_mime_type="application/json"
+                response_mime_type="application/json",
+                response_schema=response_schema
             )
         )
 
@@ -185,9 +193,10 @@ class DateTimeEncoder(json.JSONEncoder):
 
 
 @lru_cache(maxsize=128)
-def get_exercise_json(db:Session):
+async def get_exercise_json(db:AsyncSession):
     try:
-        exercises = db.query(models.Exercise).all()
+        # exercises = db.query(models.Exercise).all()
+        exercises = (await db.scalars(select(models.Exercise))).all()
         data = [row.__dict__ for row in exercises]
 
         for row in data:
@@ -199,30 +208,100 @@ def get_exercise_json(db:Session):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=str(e))
     
 
-def save_workout_plan_db(db:Session,current_user:dict,workout_plan_data:dict):
+async def save_workout_plan_db(db:AsyncSession,current_user:dict,workout_plan_data:dict):
     try:
         workout_plan = models.WorkoutPlan(user_id=current_user.id,name=workout_plan_data['name'],description=workout_plan_data['description'],weeks=4)
         db.add(workout_plan)
-        db.commit()
-        db.refresh(workout_plan)
+        await db.commit()
+        await db.refresh(workout_plan)
 
         for week in workout_plan_data['weeks']:
             workout_plan_week = models.WorkoutPlanWeek(workout_plan_id=workout_plan.id,week_number=week['week_number'])
             db.add(workout_plan_week)
-            db.commit()
-            db.refresh(workout_plan_week)
+            await db.commit()
+            await db.refresh(workout_plan_week)
 
             for day in week['days']:
                 workout_plan_day = models.WorkoutPlanDay(workout_plan_week_id=workout_plan_week.id,day_of_week=day['day'])
                 db.add(workout_plan_day)
-                db.commit()
-                db.refresh(workout_plan_day)
+                await db.commit()
+                await db.refresh(workout_plan_day)
 
                 for exercise in day['exercises']:
                     workout_plan_exercise = models.WorkoutPlanExercise(exercise_id=exercise['exercise_id'],workout_plan_day_id=workout_plan_day.id,sets=exercise['sets'],reps=exercise['reps'],order=exercise['order'])
                     db.add(workout_plan_exercise)
-                    db.commit()
-                    db.refresh(workout_plan_exercise)
+                    await db.commit()
+                    await db.refresh(workout_plan_exercise)
     except Exception as e:
         logger.error(str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail=str(e))
+    
+
+response_schema = {
+  "type": "OBJECT",
+  "properties": {
+    "name": {
+      "type": "STRING",
+      "description": "The name of the workout plan."
+    },
+    "description": {
+      "type": "STRING",
+      "description": "A brief description of the workout plan."
+    },
+    "weeks": {
+      "type": "ARRAY",
+      "description": "A list of weekly schedules.",
+      "items": {
+        "type": "OBJECT",
+        "properties": {
+          "week_number": {
+            "type": "NUMBER",
+            "description": "The sequential week number (e.g., 1, 2, 3)."
+          },
+          "days": {
+            "type": "ARRAY",
+            "description": "A list of daily workouts for the week.",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "day": {
+                  "type": "STRING",
+                  "description": "The day of the week for the workout (e.g., 'Monday', 'Wednesday')."
+                },
+                "exercises": {
+                  "type": "ARRAY",
+                  "description": "A list of exercises for this day.",
+                  "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                      "exercise_id": {
+                        "type": "NUMBER",
+                        "description": "A unique identifier for the exercise."
+                      },
+                      "sets": {
+                        "type": "NUMBER",
+                        "description": "The number of sets to perform."
+                      },
+                      "reps": {
+                        "type": "NUMBER",
+                        "description": "The number of repetitions per set."
+                      },
+                      "order": {
+                        "type": "NUMBER",
+                        "description": "The sequence order for this exercise in the workout."
+                      }
+                    },
+                    "required": ["exercise_id", "sets", "reps", "order"]
+                  }
+                }
+              },
+              "required": ["day", "exercises"]
+            }
+          }
+        },
+        "required": ["week_number", "days"]
+      }
+    }
+  },
+  "required": ["name", "description", "weeks"]
+}

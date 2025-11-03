@@ -1,3 +1,4 @@
+import json
 from typing import List
 from fastapi import APIRouter,HTTPException,status,Depends
 from db.database import get_db
@@ -9,6 +10,7 @@ import models
 from oauth2 import get_current_user
 from utils.logger import setup_logger
 import schemas
+from utils.cache import cache
 
 workout_route = APIRouter(prefix='/workouts')
 logger = setup_logger("workout_route")
@@ -17,11 +19,26 @@ logger = setup_logger("workout_route")
 async def get_workouts(db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
         # result = db.query(models.WorkoutPlan).all()
-        result  = (await db.scalars(select(models.WorkoutPlan))).all()
+        cache_key  = f"user:{current_user.id}:workouts"
+        if cache.exists(cache_key):
+            logger.info("Fetching workout plans from cache")
+            result = cache.get(f"user:{current_user.id}:workouts")
+            print(type(result))
+            return json.loads(result)
+        result  = (await db.scalars(select(models.WorkoutPlan).where(models.WorkoutPlan.user_id == current_user.id))).all()
         if len(result) == 0:
             logger.warning(f"No workout plan found in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"No workout plan found in database")
         logger.info("Workout plans fetched successfully")
+        # Convert to Pydantic models
+        pydantic_data = [schemas.DisplayWorkoutPlan.model_validate(item) for item in result]
+
+        # Cache the result
+        cache.set(
+            cache_key,
+            json.dumps([item.model_dump(mode='json') for item in pydantic_data]),
+            ex=3600
+        )  # Cache for 1 hour
         return result
     except HTTPException as http_exec:
         raise http_exec
@@ -38,6 +55,11 @@ async def get_workout_plan(
     # plan = db.query(models.WorkoutPlan).filter(
     #     models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
     # ).first()
+    cache_key = f"user:{current_user.id}:workout_plan:{plan_id}"
+    if cache.exists(cache_key):
+        logger.info("Fetching workout plan from cache")
+        plan = cache.get(cache_key)
+        return json.loads(plan)
     plan = (await db.scalars(select(models.WorkoutPlan).where(models.WorkoutPlan.id == plan_id,models.WorkoutPlan.user_id == current_user.id)
                             .options(
                                 # Eagerly load 'weeks_schedule' relationship
@@ -45,7 +67,7 @@ async def get_workout_plan(
                                 # And within each week, eagerly load its 'days_schedule'
                                 .selectinload(models.WorkoutPlanWeek.days_schedule)
                             )
-                             ))
+                             )).fetchall()
             
     if not plan:
         raise HTTPException(status_code=404, detail="Workout plan not found.")
@@ -58,6 +80,14 @@ async def get_workout_plan(
     # - plan.id, plan.name, plan.description, plan.weeks (the integer)
     # - plan.weeks_schedule (a list of WorkoutPlanWeek objects)
     #   - Each week_obj in plan.weeks_schedule has week_obj.days_schedule (a list of WorkoutPlanDay objects)
+    
+    pydantic_plan = [schemas.DisplayWorkoutPlanResponse.model_validate(item) for item in plan]
+    #Set the cache
+    cache.set(
+        cache_key,
+        json.dumps([item.model_dump(mode='json') for item in pydantic_plan]),
+        ex=3600  # Cache for 1 hour
+    )
 
     return plan # FastAPI will use WorkoutPlanResponse to serialize this
 
@@ -71,6 +101,11 @@ async def get_exercises_in_day(
     #     models.WorkoutPlanDay.id == day_id, 
     #     models.WorkoutPlan.user_id == current_user.id
     # ).first()
+    cache_key = f"user:{current_user.id}:workout_day_exercises:{day_id}"
+    if cache.exists(cache_key):
+        logger.info("Fetching exercises for day from cache")
+        exercises = cache.get(cache_key)
+        return json.loads(exercises)
     day = (await db.scalars(select(models.WorkoutPlanDay).join(models.WorkoutPlanWeek).join(models.WorkoutPlan).where(
         models.WorkoutPlanDay.id == day_id,
         models.WorkoutPlan.user_id == current_user.id
@@ -78,15 +113,31 @@ async def get_exercises_in_day(
 
     if not day:
         raise HTTPException(status_code=404, detail="Day not found or unauthorized access.")
+    
+
 
     # exercises = db.query(models.WorkoutPlanExercise).filter(models.WorkoutPlanExercise.workout_plan_day_id == day_id).all()
     exercises = (await db.scalars(select(models.WorkoutPlanExercise).where(models.WorkoutPlanExercise.workout_plan_day_id == day_id))).all()
+
+    #cache the result
+    pydantic_exercises = [schemas.DisplayWorkoutPlanExercise.model_validate(item) for item in exercises]
+    cache.set(
+        cache_key,
+        json.dumps([item.model_dump(mode='json') for item in pydantic_exercises]),
+        ex=3600  # Cache for 1 hour
+    )
+
     return exercises
 
 
 @workout_route.post('/',status_code=status.HTTP_201_CREATED,response_model=schemas.DisplayWorkoutPlan)
 async def create_workout(workout_data: schemas.CreateWorkoutPlan,db:AsyncSession = Depends(get_db),current_user:dict = Depends(get_current_user)):
     try:
+        cache_key = f"user:{current_user.id}:workouts"
+        if cache.exists(cache_key):
+            logger.info("clearing cache for workout plans")
+            cache.delete(cache_key)
+
         new_workout = models.WorkoutPlan(user_id=current_user.id,**workout_data.model_dump())
         db.add(new_workout)
         await db.commit()
@@ -238,6 +289,10 @@ def update_workout_plan(
 
     db.commit()
     db.refresh(plan)
+    logger.info("Workout plan updated successfully")
+    # Clear the cache for this plan
+    cache_key = f"user:{current_user.id}:workout_plan:{plan_id}"
+    cache.delete(cache_key)
     return plan
 
 
@@ -271,7 +326,12 @@ def update_exercises_in_day(
 
         updated_exercises.append(workout_exercise)
 
-    db.commit()
+    db.commit() 
+    db.refresh(updated_exercises)
+    logger.info("Exercises updated successfully")
+    # Clear the cache for this day's exercises
+    cache_key = f"user:{current_user.id}:workout_day_exercises:{day_id}"
+    cache.delete(cache_key)
     return updated_exercises
 
 
@@ -279,16 +339,31 @@ def update_exercises_in_day(
 
 
 @workout_route.delete("/{plan_id}", status_code=204)
-def delete_workout_plan(plan_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    plan = db.query(models.WorkoutPlan).filter(
-        models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
-    ).first()
+async def delete_workout_plan(plan_id: int, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    # plan = db.query(models.WorkoutPlan).filter(
+    #     models.WorkoutPlan.id == plan_id, models.WorkoutPlan.user_id == current_user.id
+    # ).first()
+    try:
+        plan = (await db.scalars(select(models.WorkoutPlan).where(
+            models.WorkoutPlan.id == plan_id, 
+            models.WorkoutPlan.user_id == current_user.id
+        ))).first()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Workout plan not found.")
 
-    if not plan:
-        raise HTTPException(status_code=404, detail="Workout plan not found.")
-
-    db.delete(plan)
-    db.commit()
+        await db.delete(plan)
+        await db.commit()
+        logger.info("Workout plan deleted successfully")
+        # Clear the cache for this plan
+        plan_cache_key = f"user:{current_user.id}:workout_plan:{plan_id}"
+        wokrout_list_cache_key = f"user:{current_user.id}:workouts"
+        cache.delete(plan_cache_key)
+        cache.delete(wokrout_list_cache_key)
+    except HTTPException as http_exec:
+        raise http_exec
+    except Exception as e:
+        logger.error(str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @workout_route.delete("/days/{day_id}/exercises/{exercise_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_exercise_from_day(
@@ -308,3 +383,7 @@ def delete_exercise_from_day(
 
     db.delete(exercise)
     db.commit()
+    logger.info("Exercise deleted successfully")
+    # Clear the cache for this day's exercises
+    cache_key = f"user:{current_user.id}:workout_day_exercises:{day_id}"
+    cache.delete(cache_key)
